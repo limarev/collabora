@@ -1,0 +1,20 @@
+diff --git a/build/config/Android b/build/config/Android
+index 9227a3352..1abf6df7c 100644
+--- a/build/config/Android
++++ b/build/config/Android
+@@ -25,10 +25,14 @@ ifeq ($(ANDROID_ABI),x86)
+ TOOL      = i686-linux-android
+ ARCHFLAGS = -march=i686 -msse3 -mstackrealign -mfpmath=sse
+ else
++ifeq ($(ANDROID_ABI),x86_64)
++TOOL      = x86_64-linux-android
++else
+ $(error Invalid ABI specified in ANDROID_ABI)
+ endif
+ endif
+ endif
++endif
+
+ #
+ # Define Tools
+ 
