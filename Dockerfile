@@ -1,8 +1,11 @@
-FROM ubuntu:latest
+FROM ubuntu:20.04
 
+
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Moscow
 
 # установка зависимостей
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+RUN apt-get update \
 && apt-get install -y \
 --no-install-recommends \
 --fix-missing \
@@ -63,13 +66,20 @@ ARG android_sdk=/opt/android_sdk
 ARG cmdline_tools_path=$android_sdk/cmdline-tools/latest
 ENV PATH="${PATH}:$cmdline_tools_path/bin"
 
-RUN curl https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -o cmdtools.zip \
+
+COPY --link certs /certs/
+
+# 7302050
+# 9477386
+RUN for cert in /certs/*; do openssl x509 -in "$cert" -text | sed -ne '/BEGIN CERTIFICATE/,/END CERTIFICATE/p' > "/usr/local/share/ca-certificates/$(basename "$cert" .pem).crt"; done \
+    && update-ca-certificates \
+&& curl https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -o cmdtools.zip \
 && unzip cmdtools.zip \
 && rm cmdtools.zip \
 && mkdir -p $cmdline_tools_path \
 && mv /cmdline-tools/* $cmdline_tools_path \
 && yes | sdkmanager --licenses \
-&& sdkmanager --install "ndk-bundle" "platform-tools" "platforms;android-21" "build-tools;27.0.3" "extras;google;m2repository" "extras;android;m2repository"
+&& sdkmanager --install "ndk-bundle" "platform-tools" "platforms;android-21" "build-tools;34.0.0" "extras;google;m2repository" "extras;android;m2repository"
 
 
 ARG uid=1000
@@ -89,3 +99,6 @@ ${USER_NAME} \
 && echo "root:${root_password}" | chpasswd \
 && echo "%sudo ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
 && usermod -aG sudo "${USER_NAME}"
+
+USER user
+WORKDIR /home/user

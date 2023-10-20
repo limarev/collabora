@@ -4,6 +4,6 @@
 docker run -it \
     --name ${image_name} \
     --rm \
-    --volume ./share:/share:rw \
-    ${image_name} \
+    --volume ./share:/home/user/lo:rw \
+    ${image_name}:${tag} \
     /bin/bash
