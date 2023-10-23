@@ -1,20 +1,22 @@
 pipeline {
-    agent any
+    agent {
+        docker { 
+            image 'collabora_final:latest'
+        }
+    }
     stages {
-        stage('Build') {
-            agent {
-                docker {
-                    image 'collabora_final:latest'
-                     args '-v ${WORKSPACE}:/home/user/lo'
-                    reuseNode true
-                }
-            }
+        stage('Test') {
             steps {
                 sh 'pwd'
                 sh 'ls -la'
-                sh 'ls -la /home/user/lo'
+                sh 'sdkmanager --list'
             }
         }
-
+        stage('Fetch external tarballs') {
+            steps {
+                sh 'make distclean'
+                sh './autogen.sh --with-all-tarballs && make fetch'
+            }
+        }
     }
 }
