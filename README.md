@@ -39,3 +39,13 @@ docker run -it \
 ```
 ./fetch-tarballs.sh && ./install-libreoffice.sh
 ```
+
+## core-cp-23.05.5-2
+./fetch_tarballs.sh: /bin/sh: 1: .: cannot open /home/user/lo/sources/core-cp-23.05.5-2/sources.ver: No such file
+Makefile:258: *** Error while retrieving $lo_sources_ver from /home/user/lo/sources/core-cp-23.05.5-2/sources.ver.  Stop.
+
+fix:
+```
+touch sources.ver
+echo "lo_sources_ver=7.5" > sources.ver
+```

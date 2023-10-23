@@ -1,9 +1,9 @@
 #!/bin/bash
 . .env
 
-
 package=zstd
 
+# -DANDROID_PLATFORM=21 \
 for p in $platforms; do
     echo "Building $p:"
     mkdir -p $build_path/$package/$p
@@ -16,7 +16,8 @@ for p in $platforms; do
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_SYSTEM_NAME=Android \
         -DCMAKE_SYSTEM_VERSION=21 \
-        -DANDROID_PLATFORM=21 \
+        -DZSTD_BUILD_PROGRAMS:BOOL=OFF \
+        -DZSTD_BUILD_SHARED:BOOL=OFF \
         -DCMAKE_INSTALL_PREFIX=$install_dir/$package/$p \
         -S $source_dir/zstd/build/cmake \
         -B $build_path/$package/$p || exit 1;

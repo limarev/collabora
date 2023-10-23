@@ -1,40 +1,117 @@
 #!/bin/bash
 . .env
 
-
 package=poco
+p=armeabi-v7a
 
-for p in $platforms; do
-    echo "Building $p:"
-    mkdir -p $build_path/$package/$p
-    mkdir -p $install_dir/$package/$p
-    cd $source_dir/$package && git restore .
-    [ -f /share/scripts/$p.patch ] && cd $source_dir/$package && git apply /share/scripts/$p.patch
-    cmake \
-        -DCMAKE_TOOLCHAIN_FILE=$ndk_path/build/cmake/android.toolchain.cmake \
-        -DANDROID_ABI=$p \
-        -DCMAKE_ANDROID_ARCH_ABI=$p \
-        -DANDROID_NDK=$ndk_path \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_SYSTEM_NAME=Android \
-        -DCMAKE_SYSTEM_VERSION=21 \
-        -DANDROID_PLATFORM=21 \
-        -DCMAKE_INSTALL_PREFIX=$install_dir/$package/$p \
-        -DENABLE_CRYPTO=OFF \
-        -DENABLE_NETSSL=OFF \
-        -DENABLE_ZIP=OFF \
-        -DENABLE_DATA=OFF \
-        -DENABLE_DATA_SQLITE=OFF \
-        -DENABLE_DATA_ODBC=OFF \
-        -DENABLE_DATA_MYSQL=OFF \
-        -DENABLE_MONGODB=OFF \
-        -DENABLE_PDF=OFF \
-        -DENABLE_CPPPARSER=OFF \
-        -DENABLE_PAGECOMPILER=OFF \
-        -DENABLE_JWT=OFF \
-        -DFORCE_OPENSSL=OFF \
-        -S $source_dir/$package \
-        -B $build_path/$package/$p || exit 1;
+mkdir -p ${build_path}/${package}
 
-    cmake --build $build_path/$package/$p --target install
-done 
+cd ${source_dir}/${package}
+
+patch -p1 << 'EOF'
+diff --git a/Makefile b/Makefile
+index 217637409..860514959 100644
+--- a/Makefile
++++ b/Makefile
+@@ -88,7 +88,7 @@ CppUnit-clean:
+
+ install: libexecs
+ 	mkdir -p $(INSTALLDIR)/include/Poco
+-	mkdir -p $(INSTALLDIR)/lib
++	mkdir -p $(INSTALLDIR)/$(OSARCH)/lib
+ 	mkdir -p $(INSTALLDIR)/bin
+ 	for comp in $(filter-out $(foreach f,$(OMIT),$f%),$(COMPONENTS)) ; do \
+ 		if [ -d "$(POCO_BASE)/$$comp/include" ] ; then \
+@@ -102,8 +102,8 @@ ifeq ($(OSNAME), CYGWIN)
+ 	find $(POCO_BUILD)/lib/$(OSNAME)/$(OSARCH) -name "cygPoco*" -type f -exec cp -f  {} $(INSTALLDIR)/bin \;
+ 	find $(POCO_BUILD)/lib/$(OSNAME)/$(OSARCH) -name "cygPoco*" -type l -exec cp -Rf {} $(INSTALLDIR)/bin \;
+ endif
+-	find $(POCO_BUILD)/lib/$(OSNAME)/$(OSARCH) -name "libPoco*" -type f -exec cp -f  {} $(INSTALLDIR)/lib \;
+-	find $(POCO_BUILD)/lib/$(OSNAME)/$(OSARCH) -name "libPoco*" -type l -exec cp -Rf {} $(INSTALLDIR)/lib \;
++	find $(POCO_BUILD)/lib/$(OSNAME)/$(OSARCH) -name "libPoco*" -type f -exec cp -f  {} $(INSTALLDIR)/$(OSARCH)/lib \;
++	find $(POCO_BUILD)/lib/$(OSNAME)/$(OSARCH) -name "libPoco*" -type l -exec cp -Rf {} $(INSTALLDIR)/$(OSARCH)/lib \;
+
+ uninstall:
+ 	[ -d $(INSTALLDIR)/include/Poco ] && rm -rf $(INSTALLDIR)/include/Poco || echo "No installed Poco headers found";
+diff --git a/build/config/Android b/build/config/Android
+index 95a472787..66577ca39 100644
+--- a/build/config/Android
++++ b/build/config/Android
+@@ -12,29 +12,35 @@ ANDROID_ABI        ?= armeabi
+ POCO_TARGET_OSNAME  = Android
+ POCO_TARGET_OSARCH  = $(ANDROID_ABI)
+
+-ifeq ($(ANDROID_ABI),armeabi)
+-TOOL      = arm-linux-androideabi
+-ARCHFLAGS = -mthumb
+-else
+ ifeq ($(ANDROID_ABI),armeabi-v7a)
+ TOOL      = arm-linux-androideabi
+ ARCHFLAGS = -march=armv7-a -mfloat-abi=softfp
+ LINKFLAGS = -Wl,--fix-cortex-a8
+ else
++ifeq ($(ANDROID_ABI),arm64-v8a)
++TOOL      = aarch64-linux-android
++ARCHFLAGS = -march=armv8-a
++LINKFLAGS = -Wl,--fix-cortex-a8
++else
+ ifeq ($(ANDROID_ABI),x86)
+ TOOL      = i686-linux-android
+ ARCHFLAGS = -march=i686 -msse3 -mstackrealign -mfpmath=sse
+ else
++ifeq ($(ANDROID_ABI),x86_64)
++TOOL      = x86_64-linux-android
++ARCHFLAGS = -march=x86-64 -msse3 -mstackrealign -mfpmath=sse
++else
+ $(error Invalid ABI specified in ANDROID_ABI)
+ endif
+ endif
+ endif
++endif
+
+ #
+ # Define Tools
+ #
+-CC      = $(TOOL)-gcc
+-CXX     = $(TOOL)-g++
++CC      = $(TOOL)21-clang
++CXX     = $(TOOL)21-clang++
+ LINK    = $(CXX)
+ STRIP   = $(TOOL)-strip
+ LIB     = $(TOOL)-ar -cr
+@@ -56,10 +62,10 @@ SHAREDLIBLINKEXT = .so
+ #
+ # Compiler and Linker Flags
+ #
+-CFLAGS          = $(ARCHFLAGS) -fpic -ffunction-sections -funwind-tables -fstack-protector -fno-strict-aliasing -finline-limit=64
++CFLAGS          = $(ARCHFLAGS) -fpic -ffunction-sections -funwind-tables -fstack-protector -fno-strict-aliasing
+ CFLAGS32        =
+ CFLAGS64        =
+-CXXFLAGS        = $(ARCHFLAGS) -fpic -ffunction-sections -funwind-tables -fstack-protector -fno-strict-aliasing -finline-limit=64 -frtti -fexceptions
++CXXFLAGS        = $(ARCHFLAGS) -fpic -ffunction-sections -funwind-tables -fstack-protector -fno-strict-aliasing -frtti -fexceptions
+ CXXFLAGS32      =
+ CXXFLAGS64      =
+ LINKFLAGS      +=
+@@ -86,4 +92,4 @@ SYSFLAGS = -DPOCO_ANDROID -DPOCO_NO_FPENVIRONMENT -DPOCO_NO_WSTRING -DPOCO_NO_SH
+ #
+ # System Specific Libraries
+ #
+-SYSLIBS  = -lstdc++ -lsupc++
++SYSLIBS  = -static-libstdc++
+EOF
+
+export PATH="$PATH":${ndk_path}/toolchains/llvm/prebuilt/linux-x86_64/bin/
+export SYSLIBS=-static-libstdc++
+mkdir -p ${install_dir}/${package}
+
+./configure \
+   --config=Android \
+   --prefix=${install_dir}/${package}\
+   --no-samples \
+   --no-tests \
+   --omit=ActiveRecord,Crypto,NetSSL_OpenSSL,Zip,Data,Data/SQLite,Data/ODBC,Data/MySQL,MongoDB,PDF,CppParser,PageCompiler,JWT,Prometheus,Redis
+
+make -sj12 ANDROID_ABI=armeabi-v7a CC=armv7a-linux-androideabi21-clang CXX=armv7a-linux-androideabi21-clang++ install
+make -sj12 ANDROID_ABI=arm64-v8a install
+make -sj12 ANDROID_ABI=x86       install
+make -sj12 ANDROID_ABI=x86_64    install
