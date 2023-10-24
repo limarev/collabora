@@ -2,7 +2,6 @@
 
 set -x
 
-
 function build {
     echo \
     "--with-android-package-name=com.collabora.for.gerrit
