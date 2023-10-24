@@ -1,21 +1,29 @@
 pipeline {
+    environment {
+        ANDROID_SDK_PATH = '/opt/android_sdk'
+        NDK_PATH = '${ANDROID_SDK_PATH}/ndk-bundle'
+        DISTRO = 'CPAndroid'
+    }
     agent {
         docker { 
             image 'collabora_final:latest'
         }
     }
     stages {
-        stage('Test') {
-            steps {
-                sh 'pwd'
-                sh 'ls -la'
-                sh 'sdkmanager --list'
-            }
-        }
         stage('Fetch external tarballs') {
             steps {
-                sh 'make distclean'
-                sh './autogen.sh --with-all-tarballs && make fetch'
+                // sh 'echo \
+                //     "--with-android-package-name=com.collabora.for.gerrit
+                //     --with-android-ndk=\$NDK_PATH
+                //     --with-android-sdk=\$ANDROID_SDK_PATH
+                //     --with-distro=\$DISTRO
+                //     --disable-ccache" > autogen.input'
+                sh './autogen.sh \
+                    --with-android-package-name=com.collabora.for.gerrit \
+                    --with-android-ndk=$NDK_PATH \
+                    --with-android-sdk=$ANDROID_SDK_PATH \
+                    --with-distro=$DISTRO \
+                    --disable-ccache && make'
             }
         }
     }
